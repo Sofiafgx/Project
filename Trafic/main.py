@@ -5,40 +5,27 @@ import pygame
 import sys
 import os
 import numpy as np
-prediction_model_mode = True
 import joblib
+
+prediction_model_mode = True
 mj = joblib.load("./Trafic/model_joblib")
 
-
 def ml_model_timer(on_off, flow1, flow2, flow3, flow4):
-    if prediction_model_mode:
+    if on_off:
         T1_data = np.array(0.44).reshape(-1, 1)
-        T1_predict = np.ceil(mj.predict(T1_data))
-        if T1_predict < 5:
-            T1_predict = 5
-        elif T1_predict > 67:
-            T1_predict = 67
-        print(type(T1_predict))
-        print(T1_predict)
-        return []
+        T1_predict = np.clip(mj.predict(T1_data), 5, 67)
+        return T1_predict.tolist()
     else:
         return "MODE IS OFF"
-
 L1_percentil = np.array(0.1).reshape(-1, 1)
-T1_predict = np.ceil(mj.predict(L1_percentil))
-if T1_predict < 5:
-    T1_predict = 5
-elif T1_predict > 67:
-    T1_predict = 67
+T1_predict = np.clip(mj.predict(L1_percentil), 5, 67)
 print(type(T1_predict))
 print(T1_predict)
-
 
 def rl_ml_model_timer(flow):
     flow_percentile = np.array(flow).reshape(-1, 1)
     green_time_predict = np.ceil(mj.predict(flow_percentile))
     return green_time_predict.astype(int)
-
 
 def ml_model_timer(flow):
     flow_percentile = np.array(flow).reshape(-1, 1)
@@ -57,23 +44,118 @@ defaultYellow = 2
 signals = []
 noOfSignals = 4
 currentGreen = 0 
-
 nextGreen = (
     currentGreen + 1
 ) % noOfSignals
 
 currentYellow = 0 
 
-speeds = {'car':2.25, 'bus':1.8, 'truck':1.8, 'bike':2.5}
-
-
-x = {'right':[0,0,0], 'down':[620,660,630], 'left':[1400,1400,1400], 'up':[690,730,700]}    
-y = {'right':[430,470,440], 'down':[0,0,0], 'left':[360,400,370], 'up':[800,800,800]}
-
-mid = {'right': {'x':560, 'y':465}, 'down': {'x':560, 'y':310}, 'left': {'x':860, 'y':310}, 'up': {'x':815, 'y':495}}
-vehicles = {'right': {0:[], 1:[], 2:[], 'crossed':0}, 'down': {0:[], 1:[], 2:[], 'crossed':0}, 'left': {0:[], 1:[], 2:[], 'crossed':0}, 'up': {0:[], 1:[], 2:[], 'crossed':0}}
-vehicleTypes = {0:'car', 1:'bus', 2:'truck', 3:'bike'}
-directionNumbers = {0:'right', 1:'down', 2:'left', 3:'up'}
+speeds = {
+	'car': 2.25,
+	'bus': 1.8,
+	'truck': 1.8,
+	'bike': 2.5
+};
+x = {
+	'right': [
+		0,
+		0,
+		0
+	],
+	'down': [
+		620,
+		660,
+		630
+	],
+	'left': [
+		1400,
+		1400,
+		1400
+	],
+	'up': [
+		690,
+		730,
+		700
+	]
+};
+y = {
+	'right': [
+		430,
+		470,
+		440
+	],
+	'down': [
+		0,
+		0,
+		0
+	],
+	'left': [
+		360,
+		400,
+		370
+	],
+	'up': [
+		800,
+		800,
+		800
+	]
+};
+mid = {
+	'right': {
+		'x': 560,
+		'y': 465
+	},
+	'down': {
+		'x': 560,
+		'y': 310
+	},
+	'left': {
+		'x': 860,
+		'y': 310
+	},
+	'up': {
+		'x': 815,
+		'y': 495
+	}
+};
+vehicles = {
+	'right': {
+		0: [],
+		1: [],
+		2: [],
+		'crossed': 0
+	},
+	'down': {
+		0: [],
+		1: [],
+		2: [],
+		'crossed': 0
+	},
+	'left': {
+		0: [],
+		1: [],
+		2: [],
+		'crossed': 0
+	},
+	'up': {
+		0: [],
+		1: [],
+		2: [],
+		'crossed': 0
+	}
+};
+vehicleTypes = {
+	0: 'car',
+	1: 'bus',
+	2: 'truck',
+	3: 'bike'
+};
+directionNumbers = {
+	0: 'right',
+	1: 'down',
+	2: 'left',
+	3: 'up'
+};
 
 
 signalCoods = [(530,230),(810,230),(810,570),(530,570)]
@@ -151,26 +233,24 @@ class Vehicle(pygame.sprite.Sprite):
         path = "Trafic/images/" + direction + "/" + vehicleClass + ".png"
         self.originalImage = pygame.image.load(path)
         self.image = pygame.image.load(path)
-
-        if(len(vehicles[direction][lane])>1 and vehicles[direction][lane][self.index-1].crossed==0):   
-            if(direction=='right'):
-                self.stop = vehicles[direction][lane][self.index-1].stop 
-                - vehicles[direction][lane][self.index-1].image.get_rect().width 
-                - stoppingGap         
-            elif(direction=='left'):
-                self.stop = vehicles[direction][lane][self.index-1].stop 
-                + vehicles[direction][lane][self.index-1].image.get_rect().width 
-                + stoppingGap
-            elif(direction=='down'):
-                self.stop = vehicles[direction][lane][self.index-1].stop 
-                - vehicles[direction][lane][self.index-1].image.get_rect().height 
-                - stoppingGap
-            elif(direction=='up'):
-                self.stop = vehicles[direction][lane][self.index-1].stop 
-                + vehicles[direction][lane][self.index-1].image.get_rect().height 
-                + stoppingGap
+        
+        
+        if len(vehicles[direction][lane]) > 1 and vehicles[direction][lane][self.index - 1].crossed == 0:
+            preceding_vehicle = vehicles[direction][lane][self.index - 1]
+    
+            if direction in ['right', 'left']:
+                width_multiplier = 1 if direction == 'left' else -1
+                self.stop = (
+                    preceding_vehicle.stop + width_multiplier * preceding_vehicle.image.get_rect().width + width_multiplier * stoppingGap
+        )
+            elif direction in ['down', 'up']:
+                height_multiplier = 1 if direction == 'up' else -1
+                self.stop = (
+                    preceding_vehicle.stop + height_multiplier * preceding_vehicle.image.get_rect().height + height_multiplier * stoppingGap
+        )
         else:
             self.stop = defaultStop[direction]
+
             
 
         if(direction=='right'):
@@ -189,13 +269,12 @@ class Vehicle(pygame.sprite.Sprite):
 
     def render(self, screen):
         screen.blit(self.image, (self.x, self.y))
-
     def move(self):
-        if(self.direction=='right'):
-            if(self.crossed==0 and self.x+self.image.get_rect().width>stopLines[self.direction]):
+        if self.direction == 'right':
+            if self.crossed == 0 and self.x + self.image.get_rect().width > stopLines[self.direction]:
                 self.crossed = 1
                 vehicles[self.direction]['crossed'] += 1
-                if(self.willTurn==0):
+                if self.willTurn == 0:
                     vehiclesNotTurned[self.direction][self.lane].append(self)
                     self.crossedIndex = len(vehiclesNotTurned[self.direction][self.lane]) - 1
             if(self.willTurn==1):
@@ -461,7 +540,6 @@ def printStatus():
                     "-> g:",
                     signals[i].green,
                 )
-    print()
 
 
 def repeat():
@@ -534,20 +612,18 @@ def generateVehicles():
                 will_turn = 1
 
         temp = random.randint(0, 100)
-
-        direction_number = 0
         dist = [5, 11, 56, 101]
         if temp < dist[0]:
-            direction_number = 1  #(Down)
+            direction_number = 1
             count_Leg2 += 1
         elif temp < dist[1]:
-            direction_number = 3  #(Up)
+            direction_number = 3
             count_Leg4 += 1
         elif temp < dist[2]:
-            direction_number = 0  #(Right)
+            direction_number = 0
             count_Leg1 += 1
         elif temp < dist[3]:
-            direction_number = 2  #(Left)
+            direction_number = 2
             count_Leg3 += 1
         Vehicle(
             lane_number,
@@ -562,17 +638,17 @@ def generateVehicles():
         print("Total flow count: ", total_flow_count)
 
 
-
 def showStats():
     totalVehicles = 0
     print("Direction-wise Vehicle crossed Counts of Lanes#")
-    for i in range(0, 4):
-        if signals[i] != None:
-            print("Direction", i + 1, ":", vehicles[directionNumbers[i]]["crossed"])
-            totalVehicles += vehicles[directionNumbers[i]]["crossed"]
-    print("Total vehicles passed: ", totalVehicles)
-    print("Total time: ", timeElapsed)
-
+    for i in range(4):
+        if signals[i] is not None:
+            direction = i + 1
+            crossed_count = vehicles[directionNumbers[i]]["crossed"]
+            print(f"Direction {direction}: {crossed_count}")
+            totalVehicles += crossed_count
+    print("Total vehicles passed:", totalVehicles)
+    print("Total time:", timeElapsed)
 
 def simTime():
 
